@@ -31,7 +31,10 @@ def main(
         score_matrix,
         discard_handle,
         do_sort,
-        quiet):
+        quiet,
+        codonMatrix,
+        globalStartingPoint
+        ):
 
     try:
         score_matrix_ = score_matrix.load()
@@ -70,7 +73,7 @@ def main(
     def output(records):
         BamIO.write(
             allseqs(records),
-            output_file,
+            output_handle,
             reference
             )
 
@@ -85,10 +88,12 @@ def main(
             expected_identity,
             discard,
             output,
+            codonMatrix,
+            globalStartingPoint,
             quiet
             )
         if do_sort:
-            BamIO.sort(output_file)
+            BamIO.sort(output_handle)
         retcode = 0
     except FrequenciesError:
         print(
@@ -177,6 +182,16 @@ if __name__ == '__main__':
         version='BioExt version {0}'.format(version),
         help='print version information and exit'
         )
+    parser.add_argument(
+        '-cm', '--codonMatrix',
+        action='store_true',
+        help='Use an empirical codon matrix for scoring alignments. If selected, overrides any different scoring matrix selected.'
+        )
+    parser.add_argument(
+        '-gsp', '--globalStartingPoint', 
+        action='store_true',
+        help='Sequences are penalized for not starting at the starting point of the reference (the first row and column of the scoring matrix are initialized with penalties). Sequences are not penalized for ending early, with the caveat that at least one sequence be used fully (the backtrack starts with the max score in the bottom row or rightmost column of the dynamic matrix). This option is therefore different from a global or local alignment.'
+        )
 
     args = None
     retcode = -1
@@ -194,7 +209,9 @@ if __name__ == '__main__':
             args.score_matrix,
             args.discard,
             args.sort,
-            args.quiet
+            args.quiet,
+            args.codonMatrix,
+            args.globalStartingPoint
         )
     finally:
         if args is not None:

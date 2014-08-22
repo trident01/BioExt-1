@@ -39,7 +39,7 @@
 #define HY_3X4_START 9
 #define HY_3X4_COUNT 4
 
-// match 5 in the ref to 5 in the query
+// match 3 in the ref to 5 in the query
 #define HY_11100_11111 13
 #define HY_11010_11111 14
 #define HY_11001_11111 15
@@ -123,6 +123,7 @@ static long CodonAlignStringsStep( double * const score_matrix
                                  , const double * const codon3x1
                                  )
 {
+	
     /**
      * r is CODON position in the reference,
      * q is NUC position in the query,
@@ -133,6 +134,7 @@ static long CodonAlignStringsStep( double * const score_matrix
      *       alignments to the reference
      * rpos is the position of r in the reference
      */
+
     const long curr = ( r - 0 ) * score_cols + q, // where we currently are
                prev = ( r - 1 ) * score_cols + q, // up a codon in the reference
                offset3x5 = HY_3X5_COUNT * char_count * char_count * char_count, // both 3x5 and 3x4 are
@@ -182,6 +184,7 @@ static long CodonAlignStringsStep( double * const score_matrix
         if ( deletion_matrix ) {
             choices[ HY_111_000 ] = MAX( score_matrix[ prev ] - open_deletion,
                                          deletion_matrix[ prev ] - ( r > 1 ? extend_deletion : open_deletion ) );
+            //fprintf(stderr, "%g %s", choices[ HY_111_000 ], "\n");
             deletion_matrix[ curr ] = choices[ HY_111_000 ];
         }
         else {
@@ -226,6 +229,7 @@ static long CodonAlignStringsStep( double * const score_matrix
         }
     }
 
+
     // we disallow partial moves in the reference, so those use to be here but are now gone
 
     // HERE BE DRAGONS!!!!
@@ -250,14 +254,17 @@ static long CodonAlignStringsStep( double * const score_matrix
 
                     // if we have a double ragged edge, don't penalize
                     if ( ( q == 5              && choice == HY_00111_11111 )
-                      || ( q == score_cols - 1 && choice == HY_11100_11111 ) )
+                      || ( q == score_cols - 1 && choice == HY_11100_11111 ) ){
                         penalty = 0.;
+		    }
                     // if we have a single ragged edge, penalize by a single miscall
                     // we don't have to worry about specifying each case here,
                     // as the 00111_11111 case takes preference above,
                     // so we don't have to explicitly avoid it
-                    else if ( q == 5 && choice >= HY_01110_11111 )
+                    else if ( q == 5 && choice >= HY_01110_11111 ){
                         penalty = miscall_cost;
+			//fprintf(stderr, "Single Ragged Edge! Penalty of 1 miscall! ");
+		    }
                     // if we have a single ragged edge, penalize by a single miscall
                     // unfortunately these cases are spread out,
                     // so we have to enumerate them explicitly here
@@ -269,7 +276,7 @@ static long CodonAlignStringsStep( double * const score_matrix
                     // if we don't fit into any of these special cases,
                     // the miscall penalty is double (as we're matching 3 to 5)
                     else
-                        penalty = 2. * miscall_cost;
+                        penalty = 2. * miscall_cost; 
 
                     choices[ choice ] = score_matrix[ prev - 5 ] - penalty
                                       + codon3x5[ r_codon * offset3x5 + HY_3X5_COUNT * partial_codons[ i ] + i ];
@@ -294,11 +301,14 @@ static long CodonAlignStringsStep( double * const score_matrix
                     // if we have a ragged edge,
                     // penalize it not at all
                     if ( ( q == 4              && choice == HY_0111_1111 )
-                      || ( q == score_cols - 1 && choice == HY_1110_1111 ) )
+                      || ( q == score_cols - 1 && choice == HY_1110_1111 ) ){
                         penalty = 0.;
+		    //fprintf(stderr, "Single Ragged Edge! No penalty! ");
+		    }
                     // otherwise it's just a single miscall penalty
                     else
                         penalty = miscall_cost;
+
 
                     choices[ choice ] = score_matrix[ prev - 4 ] - penalty
                                       + codon3x4[ r_codon * offset3x4 + HY_3X4_COUNT * partial_codons[ i ] + i ];
@@ -320,8 +330,9 @@ static long CodonAlignStringsStep( double * const score_matrix
                     // if we have a ragged edge at the beginning or end,
                     // respectively, don't penalize it
                     if ( ( q == 2              && choice == HY_111_011 )
-                      || ( q == score_cols - 1 && choice == HY_111_110 ) )
+                      || ( q == score_cols - 1 && choice == HY_111_110 ) ){
                         penalty = 0.;
+		    }
                     // otherwise it's just a single miscall penalty
                     else
                         penalty = miscall_cost;
@@ -345,13 +356,15 @@ static long CodonAlignStringsStep( double * const score_matrix
                     // if we have a double ragged edge,
                     // don't enforce a miscall penalty
                     if ( ( q == 1              && choice == HY_111_001 )
-                      || ( q == score_cols - 1 && choice == HY_111_100 ) )
+                      || ( q == score_cols - 1 && choice == HY_111_100 ) ){
                         penalty = 0.;
+		    }
                     // if we have a single ragged edge,
                     // enforce only a single miscall penalty
                     else if ( ( q == 1              && choice == HY_111_010 )
-                           || ( q == score_cols - 1 && choice == HY_111_010 ) )
+                           || ( q == score_cols - 1 && choice == HY_111_010 ) ){
                         penalty = miscall_cost;
+		    }
                     // otherwise we need a double miscall penalty,
                     // for the two positions we're inserting
                     else
@@ -375,9 +388,14 @@ static long CodonAlignStringsStep( double * const score_matrix
         }
     }
 
-    /* fprintf( stderr, "\nscore: %.3g best: %ld\n", max_score, best_choice ); */
+    //fprintf( stderr, "\nscore: %.3g best: %ld\n", max_score, best_choice );
+	 
     // assign the score to the current position
     score_matrix[ curr ] = max_score;
+    //if(best_choice == HY_111_111){
+        //fprintf(stderr, "%s %lu %s %lu %s", "r_codon: ", r_codon, " q_codon: ", q_codon, "\n");
+	    //fprintf(stderr, "%g %s", cost_matrix[ r_codon * cost_stride + q_codon ], "\n");
+    //}
     return best_choice;
 }
 
@@ -392,6 +410,7 @@ static inline void BacktrackAlign( signed char * const edit_ops
                                  , double match
                                  )
 {
+    //not being called by BeAlign
     if ( match >= deletion && match >= insertion ) {
         --(*r);
         --(*q);
@@ -416,6 +435,7 @@ static inline void BacktrackAlignCodon( signed char * const edit_ops
                                       , const long code
                                       )
 {
+    // *r and *q hold the positions we are currently in in the reference and query
     long r_str[ 5 ] = { 0, 0, 0, 0, 0 },
          q_str[ 5 ] = { 0, 0, 0, 0, 0 },
          idx         = 2;
@@ -599,8 +619,10 @@ static inline void MatchScore( char * r_str
 
     if ( r_char >= 0 ) {
         const long q_char = char_map[ (int) q_str[ q - 1 ] ];
-        if ( q_char >= 0 )
+        if ( q_char >= 0 ){
+	    //print_score_matrix( stderr, cost_matrix, cost_stride, cost_stride);
             (*score) += cost_matrix[ r_char * cost_stride + q_char ];
+	}
     }
 }
 
@@ -623,6 +645,7 @@ double AlignStrings( char * const r_str
                    , const long do_local
                    , const long do_affine
                    , const long do_codon
+		           , const long globalStartingPoint
                    , const double * const codon3x5
                    , const double * const codon3x4
                    , const double * const codon3x2
@@ -632,11 +655,34 @@ double AlignStrings( char * const r_str
                    , double * const insertion_matrix
                    )
 {
+    /*
+    if(globalStartingPoint){
+	fprintf(stderr, "Global Starting Point! \n");
+    }
+    if(!globalStartingPoint){
+	fprintf(stderr, "Not Global Starting Point \n");
+    }
+    */
+
+    //else
+	//fprintf(stderr, "Not doing a local alignment \n");  
+
+    //fprintf(stderr, "%s %g %s %g %s %g %s %g", " open_insertion: ", open_insertion, " extend_insertion: ", extend_insertion, " open_deletion: ", open_deletion, " extend_deletion: ", extend_deletion);
+    //fprintf(stderr, "\n");
+
+    //fprintf(stderr, "\n");
+    //fprintf(stderr, "%s %i", "r_len: ", strlen( r_str));
+    //fprintf(stderr, "\n");
+    //fprintf(stderr, "%s %i", "q_len: ", strlen(q_str));
+    //fprintf(stderr, "\n");
+    //print_score_matrix( stderr, cost_matrix, cost_stride, cost_stride);
+
     const unsigned long r_len = strlen( r_str ),
                         q_len = strlen( q_str ),
-                        ref_stride = ( do_codon ? 3 : 1 ),
+                        ref_stride = ( do_codon ? 3 : 1 ), //3
                         score_rows = r_len / ref_stride + 1,
                         score_cols = q_len + 1;
+
     long i, j, k;
     double score = 0.;
 
@@ -670,7 +716,7 @@ double AlignStrings( char * const r_str
             q_res[ q_len ] = '\0';
 
             // compute score
-            if ( ! do_local ) {
+            if ( ! do_local || globalStartingPoint) {
                 if ( do_affine )
                     score = -open_insertion - ( q_len - 1 ) * extend_insertion;
                 else
@@ -700,12 +746,13 @@ double AlignStrings( char * const r_str
             q_res[ r_len ] = '\0';
 
             // if do local, score is 0
-            if ( ! do_local ) {
+            if ( ! do_local || globalStartingPoint) {
                 if ( do_affine )
                     score = -open_deletion - ( r_len - 1 ) * extend_deletion;
                 else
                     score = -open_deletion * r_len;
             }
+	
         }
         else {
             long edit_ptr = 0;
@@ -738,33 +785,35 @@ double AlignStrings( char * const r_str
             // which is done because we calloc'd
 #ifdef __STDC_IEC_559__
             memset( score_matrix, 0, sizeof( double ) * score_rows * score_cols );
-            if ( do_affine ) {
+            if ( do_affine ) { //true
                 memset( deletion_matrix, 0, sizeof( double ) * score_rows * score_cols );
                 memset( insertion_matrix, 0, sizeof( double ) * score_rows * score_cols );
             }
 #else
-            for ( i = 0; i < score_rows * score_cols; ++i ) {
+            for ( i = 0; i < score_rows * score_cols; ++i ) { //not called
                 score_matrix[ i ] = 0.;
             }
             if ( do_affine )
                 for ( i = 0; i < score_rows * score_cols; ++i ) {
+
                     deletion_matrix[ i ] = 0.;
                     insertion_matrix[ i ] = 0.;
                 }
 #endif
 #endif
             if ( do_codon ) {
-                for ( i = 0; i < r_len; ++i )
+                for ( i = 0; i < r_len; ++i ){
                     r_enc[ i ] = char_map[ (int) r_str[ i ] ];
-
+		}
                 for ( i = 0; i < q_len; ++i )
                     q_enc[ i ] = char_map[ (int) q_str[ i ] ];
             }
+            
 
             // pre-initialize the values in the various matrices
-            if ( ! do_local ) {
+            if ( ! do_local || globalStartingPoint) {
                 double cost;
-
+		
                 // initialize gap costs in first column and first row
                 // they are 0 for local alignments, so ignore
                 if ( do_affine ) {
@@ -827,13 +876,14 @@ double AlignStrings( char * const r_str
                         // XXX: should we be including the frameshift penalty here? I think not
                         // fill in the first row of the affine deletion matrix
                         // with the deletion cost plus the miscall penalty
-                        for ( i = 1; i < score_cols; ++i )
+                        for ( i = 1; i < score_cols; ++i ){
                             deletion_matrix[ i ] = -open_deletion - ( i % 3 != 1 ? miscall_cost : 0 );
-
+			}
                         // fill in the first column of the affine insertion matrix
                         // with the insertion cost plus the miscall penalty
-                        for ( i = score_cols, j = 0; i < score_rows * score_cols; i += score_cols, ++j )
+                        for ( i = score_cols, j = 0; i < score_rows * score_cols; i += score_cols, ++j ){
                             insertion_matrix[ i ] = -open_insertion - ( j % 3 != 0 ? miscall_cost : 0 );
+			}
                     }
                     else {
                         // fill in the first row of the affine deletion matrix
@@ -873,9 +923,13 @@ double AlignStrings( char * const r_str
                                              , codon3x2
                                              , codon3x1
                                              );
-
+		
+		
+		        //print_score_matrix( stderr, score_matrix, score_rows, score_cols); //rows: 11, cols: 33
+		
                 // not doing codon alignment
             }
+	    
             else {
                 for ( i = 1; i < score_rows; ++i ) {
                     const long r_char = char_map[ (int) r_str[ i - 1 ] ];
@@ -920,23 +974,30 @@ double AlignStrings( char * const r_str
             i = r_len;
             j = q_len;
             // grab maximum score from the last entry in the table
-            score = score_matrix[ score_rows * score_cols - 1 ];
+
+             score = score_matrix[ score_rows * score_cols - 1 ];
+	       
 
             // if we're doing a local alignment,
             // find the best score in the last row and column of the scoring matrix
             // and start backtracking from there ( if it's better than the score
             // we've already found, that is )
-            if ( do_local ) {
+
+            if ( do_local || globalStartingPoint) {
+		
                 // grab the best score from the last column of the score matrix,
                 // skipping the very last entry ( we already checked it )
+
                 for ( k = score_cols - 1; k < score_rows * score_cols - 1; k += score_cols )
                     if ( score_matrix[ k ] > score ) {
-                        score = score_matrix[ k ];
+                           score = score_matrix[ k ];
+
                         // if do_codon, k / score_cols indexes into the codon space
                         // of the reference, which is resolved by multiplication
                         // by ref_stride ( which is 3 ), otherwise this
                         // directly indexes into the reference
-                        i = ref_stride * ( k / score_cols );
+
+                          i = ref_stride * ( k / score_cols );
                     }
 
                 // grab the best score from the last row of the score matrix,
@@ -950,7 +1011,6 @@ double AlignStrings( char * const r_str
                         // remove the initial value!
                         j = k - ( score_rows - 1 ) * score_cols;
                     }
-
                 // fill in the edit_ops with the difference
                 // between r_len and i
                 for ( k = i; k < r_len; ++k )
@@ -961,13 +1021,14 @@ double AlignStrings( char * const r_str
                 for ( k = j; k < q_len; ++k )
                     edit_ops[ edit_ptr++ ] = 1;
             }
-
+            //fprintf(stderr, "%s %g %s", "\nScore: ", score, "\n");
             // backtrack now
 
             /*
+            long m,n;
             // prints the score matrix
-            for ( long m = 0; m < score_rows; ++m ) {
-               for ( long n = 0; n < score_cols; ++n ) {
+            for ( m = 0; m < 1; ++m ) {
+               for ( n = 0; n < score_cols; ++n ) {
                    if ( n > 0 )
                        fprintf( stderr, "," );
                    fprintf( stderr, "% 3.3g", score_matrix[ m * score_cols + n ] );
@@ -976,11 +1037,23 @@ double AlignStrings( char * const r_str
             }
             fprintf( stderr, "\n" );
             */
+            
+            //NOTE: Need to change this so we make an array of variable length
+
+            //int positionMatrix[q_len];
+
+            //fprintf(stderr, "%lu", positionMatrix[0]);
+
 
             if ( do_codon ) {
                 // if either index hits 0, we're done
-                // or if both indices fall below 3, we're done
+                // or if both inlendices fall below 3, we're done
+		
+		//fprintf(stderr, "\n");
+	    //fprintf(stderr, "%lu %s %lu %s", i/3, " ", j,"\n");
+
                 while ( i && j && ( i >= 3 || j >= 3 ) ) {
+			
                     // perform a step
                     const long code = CodonAlignStringsStep(
                                         score_matrix
@@ -1005,14 +1078,20 @@ double AlignStrings( char * const r_str
                                       , codon3x2
                                       , codon3x1
                                       );
+
                     // alter edit_ops and decrement i and j
                     // according to the step k we took
-                    BacktrackAlignCodon( edit_ops, &edit_ptr, &i, &j, code );
+                    BacktrackAlignCodon( edit_ops, &edit_ptr, &i, &j, code);
+		    // At this point, i and j have changed values according to BacktrackAlignCodon
 
+			
+			//fprintf(stderr, "\n");
+		    
                     // if anything drops below 0, something bad happened
                     if ( i < 0 || j < 0 ) {
                         *r_res = NULL;
                         *q_res = NULL;
+			            fprintf(stderr, "something bad!");
                         score = -A_LARGE_NUMBER;
                         goto end;
                     }
@@ -1020,14 +1099,16 @@ double AlignStrings( char * const r_str
                     // handle the affine cases
                     if ( do_affine ) {
                         // divide by 3 to index into codon space
-                        k = ( i / 3 ) * score_cols + j;
-
+                        k = ( i / 3 ) * score_cols + j; 
+                        
                         // reference matched but not query, a deletion
                         if ( code == HY_111_000 ) {
+                            //fprintf(stderr, "CODE == HY_111_000 \n"); 
                             // while deletion is preferential to match
                             while ( i >= 3
                                     && score_matrix[ k ] - open_deletion
                                     <= deletion_matrix[ k ] - extend_deletion ) {
+                                //fprintf(stderr, "%s %lu %s %lu %s", " i: ", i, " j: ", j, " \n");
                                 // take a codon out of the reference
                                 i -= 3;
                                 edit_ops[ edit_ptr++ ] = -1;
@@ -1055,10 +1136,13 @@ double AlignStrings( char * const r_str
                                 k -= 3;
                             }
                         }
+                        
                     }
+                //fprintf(stderr, "%lu %s %lu %s", i/3, " ", j, "      ");
                 }
             }
             else {
+		
                 if ( do_affine ) {
                     while ( i && j ) {
                         long curr = ( i - 0 ) * score_cols + j,
@@ -1148,20 +1232,23 @@ double AlignStrings( char * const r_str
             // don't forget it!!!
 
             // reference
-            while ( --i >= 0 )
+            while ( --i >= 0 ){
                 edit_ops[ edit_ptr++ ] = -1;
-
+	    }
             // then query
-            while ( --j >= 0 )
+            while ( --j >= 0 ){
                 edit_ops[ edit_ptr++ ] = 1;
+	    }
 
             if ( edit_ptr > 0 ) {
+
                 // reset indices to 0
                 i = j = 0;
                 // rebuild the strings from the edit_ops
                 // with room for the null terminator
                 *r_res = ALLOCA( char, edit_ptr + 1 );
                 *q_res = ALLOCA( char, edit_ptr + 1 );
+		
 
                 if ( ISNULL( *r_res ) || ISNULL( *q_res ) ) {
                     free( *r_res );
@@ -1173,6 +1260,7 @@ double AlignStrings( char * const r_str
                 }
 
                 for ( --edit_ptr, k = 0; edit_ptr >= 0; --edit_ptr, ++k ) {
+
                     switch ( edit_ops[ edit_ptr ] ) {
                         // match! include characters from both strings
                     case 0:
@@ -1206,6 +1294,18 @@ double AlignStrings( char * const r_str
                 // make sure to null-terminate
                 (*r_res)[ k ] = '\0';
                 (*q_res)[ k ] = '\0';
+
+		/*
+		int i;
+		for(i = 0; i < k; i++){
+		    fprintf(stderr, "%c", toupper((*r_res)[i]));
+		}
+		fprintf(stderr, "\n");
+		for(i = 0; i < k; i++){
+		    fprintf(stderr, "%c", toupper((*q_res)[i]));
+		}
+        	fprintf(stderr, "\n");
+		*/
             }
 
 end:

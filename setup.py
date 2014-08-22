@@ -10,10 +10,12 @@ from setuptools import Extension, setup
 from BioExt import __version__ as _bioext_version
 from BioExt.references._factory import _installrefdirs
 
+from Cython.Build import cythonize
 
 np_inc = [os.path.join(os.path.dirname(numpy.__file__), 'core', 'include')]
 
-ext_modules = [
+
+ext_modules = [ 
     Extension(
         'BioExt.align._align',
         sources=[
@@ -46,7 +48,7 @@ ext_modules = [
             ],
         extra_compile_args=['-O3']
         )
-    ]
+    ] 
 
 
 setup(
@@ -125,13 +127,15 @@ setup(
         'scripts/bam2fna',
         'scripts/bam2msa',
         'scripts/bamclip',
-        'scripts/bealign',
+        'scripts/bealign.py',
         'scripts/begraph',
         'scripts/clipedge',
         'scripts/consensus',
         'scripts/msa2bam',
         'scripts/seqmerge',
-        'scripts/translate'
+        'scripts/translate',
+	'scripts/msaConsensus.py',
+        'scripts/alignFinal'
         # 'scripts/variants'
         ],
     ext_modules=ext_modules,

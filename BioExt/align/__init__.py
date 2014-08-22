@@ -14,12 +14,12 @@ from Bio.SeqRecord import SeqRecord
 from BioExt.align._align import _align, _compute_codon_matrices
 from BioExt.misc import gapless
 from BioExt.scorematrices import ProteinScoreMatrix as _ProteinScoreMatrix
-
+from BioExt.scorematrices.CodonMatrix import getEmpiricalCodonMatrix, getCodonMatrixAsArray
 
 __all__ = ['Aligner']
 
-
 def _protein_to_codon(protein_matrix, non_identity_penalty=None):
+    np.set_printoptions(threshold=np.nan)
     from BioExt.scorematrices._scorematrix import dletters
     codon_matrix = np.ones((64, 64), dtype=float) * -1e4
     pletters = protein_matrix.letters
@@ -28,7 +28,7 @@ def _protein_to_codon(protein_matrix, non_identity_penalty=None):
     for i in range(4):
         for j in range(4):
             for k in range(4):
-                cdn = ''.join(dletters[l] for l in (i, j, k))
+                cdn = ''.join(dletters[l] for l in (i, j, k)) #goes through codons in alphabetical order
                 aa = _translate(cdn)
                 idx = pletters.index(aa)
                 if aa == '*':
@@ -47,11 +47,13 @@ def _protein_to_codon(protein_matrix, non_identity_penalty=None):
                         codon_matrix[k, l] = protein_matrix_[i, j]
                         if k != l and non_identity_penalty:
                             codon_matrix[k, l] -= non_identity_penalty
+    print(protein_matrix_)
     return dletters, codon_matrix
 
 
 class Aligner:
     __slots__ = (
+        '__globalStartingPoint',
         '__nchars',
         '__char_map',
         '__score_matrix',
@@ -78,6 +80,8 @@ class Aligner:
     def __init__(
             self,
             score_matrix,
+            codonMatrix,
+            globalStartingPoint,
             open_insertion=None,
             extend_insertion=None,
             open_deletion=None,
@@ -88,18 +92,29 @@ class Aligner:
             do_affine=True,
             do_codon=True
             ):
-
+        if(globalStartingPoint):
+            print("Using a Global Starting Point")
         if do_codon and not isinstance(score_matrix, _ProteinScoreMatrix):
             raise ValueError('codon alignment requires a protein score matrix')
 
-        if do_codon:
+        if codonMatrix and do_codon:
+            print("doing a Codon Matrix!")
+            letters = 'ACGT'
+            score_matrix = getEmpiricalCodonMatrix()
+            score_matrix_ = getCodonMatrixAsArray()
+            print(score_matrix_)
+            print()
+        elif do_codon:
+            print("not doing codon Matrix")
             letters, score_matrix_ = _protein_to_codon(score_matrix, 0.5)
         else:
+            print("not doing codon matrix")
             letters = score_matrix.letters
             score_matrix_ = score_matrix.tondarray()
 
         # set the default extension cost to 7.5% of the range
-        magic = 40 / 3  # magic denominator for 7.5%
+	# initialized by lance to 40/3
+        magic = 40 / 1 # magic denominator for 7.5%
         ext_cost = (score_matrix.max() - score_matrix.min()) / magic
         # we take the negation of the minimum,
         # because the implementation assumes these values are penalties,
@@ -117,7 +132,10 @@ class Aligner:
             extend_deletion = ext_cost
         if miscall_cost is None:
             miscall_cost = min_score
-
+        
+        print("Penalties Listed Below:")
+        print("Open Insertion: "+ str(open_insertion) +" Extend Insertion: " + str(extend_insertion) + " Open Deletion: " + str(open_deletion) + " Extend Deletion: " + str(extend_deletion) + " Miscall Cost : " + str(miscall_cost))
+        print()
         # compute the expected score, if necessary
         expected_score = Aligner._expected_score(
             score_matrix,
@@ -137,6 +155,7 @@ class Aligner:
         else:
             codon3x5 = codon3x4 = codon3x2 = codon3x1 = np.zeros((0, 0), dtype=float)
 
+        self.__globalStartingPoint = globalStartingPoint
         self.__nchars = len(letters)
         self.__char_map = char_map
         self.__score_matrix = score_matrix
@@ -164,6 +183,7 @@ class Aligner:
         # compute expected per position score, if necessary
         if expected_identity is None:
             expected_score = None
+            print("Expected Score Was Not Computed")
         else:
             N = len(score_matrix.letters)
             freqs = list(score_matrix.freqs().values())
@@ -185,6 +205,7 @@ class Aligner:
                             score_matrix[i, j] *
                             freqs[i]
                             )
+            print("Expected Score Computed As: " + str(expected_score))
         return expected_score
 
     def __call__(
@@ -221,7 +242,9 @@ class Aligner:
 
         # if the reference and query are the same, we can return early
         if len(ref) and ref == query:
-            if self.__do_codon:
+            if codonMatrix and self.__do_codon:
+                 print("returning early when using a codon matrix is not currently supported")
+            elif self.__do_codon:
                 score = sum(self.__score_matrix[char, char] for char in _translate(ref))
             else:
                 score = sum(self.__score_matrix[char, char] for char in ref)
@@ -246,7 +269,8 @@ class Aligner:
         query_ = query_.upper()
 
         if self.__do_codon and len(ref_) % 3 != 0:
-            raise ValueError('when do_codon = True, len(ref) must be a multiple of 3')
+            raise ValueError('when do_codon = True, len(ref) must be a multiple of 3. Your len(ref) mod 3 was ' + str(len(ref_)%3))
+																															
 
         # if do_codon, the query's length needs to be a multiple of 3
 #         if self.__do_codon and len(query_) % 3 != 0:
@@ -295,6 +319,7 @@ class Aligner:
                 miscall_cost,
                 do_local,
                 do_affine,
+		self.__globalStartingPoint,
                 self.__do_codon,
                 self.__codon3x5,
                 self.__codon3x4,

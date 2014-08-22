@@ -17,6 +17,7 @@ double AlignStrings(
     const long,
     const long,
     const long,
+    const long,
     const double * const,
     const double * const,
     const double * const,

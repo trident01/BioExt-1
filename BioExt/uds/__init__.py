@@ -66,7 +66,9 @@ def _align_par(
         expected_identity,
         discard,
         output,
-        quiet=True
+        codonMatrix,
+	    globalStartingPoint,
+        quiet=True,
         ):
 
     try:
@@ -79,6 +81,8 @@ def _align_par(
 
     aln = Aligner(
         score_matrix,
+        codonMatrix,
+        globalStartingPoint,
         do_codon=do_codon,
         expected_identity=expected_identity
         )
@@ -93,6 +97,7 @@ def _align_par(
         raise ValueError(
             'reference must be one of str, Bio.Seq, Bio.SeqRecord'
             )
+    
 
     reference_ = Array(c_char, refstr.encode('utf-8'))
 
@@ -101,7 +106,9 @@ def _align_par(
             return True
         elif discard:
             discard(record)
+        print("keep(score, record) returned false")
         return False
+        
 
     if quiet:
         def delayed_(i, fn):
@@ -137,7 +144,7 @@ def _align_par(
 
     return rv
 
-
+#not called by bealign
 def align_to_refseq(
         reference,
         records,
@@ -155,6 +162,7 @@ def align_to_refseq(
     if score_matrix is None:
         from BioExt.scorematrices import BLOSUM62
         score_matrix = BLOSUM62.load()
+
 
     # drop-in compatibility with hy454
     do_codon = kwargs.get('codon', do_codon)

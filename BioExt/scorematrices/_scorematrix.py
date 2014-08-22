@@ -203,7 +203,14 @@ class ScoreMatrix(object):
         return max(self.__valid_scores)
 
     def min(self):
-        return min(self.__valid_scores)
+        minValue = 1000
+        for i in self.__valid_scores:
+            # in the codon substitution matrix, substitutions involving a stop codon are given this score   
+            # which throws off the calculation of certain penalties
+            if minValue > i and not i==-50.0:
+                minValue = i
+        return minValue
+
 
 
 class DNAScoreMatrix(ScoreMatrix):

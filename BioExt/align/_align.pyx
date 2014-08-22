@@ -39,6 +39,7 @@ cdef extern from "alignment.h":
         itype_t,
         itype_t,
         itype_t,
+	itype_t,
         dtype_t *,
         dtype_t *,
         dtype_t *,
@@ -136,6 +137,7 @@ def _align(
         dtype_t miscall_cost,
         itype_t do_local,
         itype_t do_affine,
+	itype_t globalStartingPoint,
         itype_t do_codon,
         np.ndarray[dtype_t, ndim=2, mode='c'] codon3x5,
         np.ndarray[dtype_t, ndim=2, mode='c'] codon3x4,
@@ -144,7 +146,7 @@ def _align(
         np.ndarray[dtype_t, ndim=1, mode='c'] score_matrix,
         np.ndarray[dtype_t, ndim=1, mode='c'] deletion_matrix,
         np.ndarray[dtype_t, ndim=1, mode='c'] insertion_matrix):
-
+    
     # cast from unicode to char *
     cdef char * ref = b_ref
     cdef char * query = b_query
@@ -157,7 +159,7 @@ def _align(
 
     if do_codon and len(b_ref) % 3 != 0:
         raise ValueError('when do_codon = True, len(ref) must be a multiple of 3')
-
+    
     try:
         score = AlignStrings(
             ref, query,
@@ -170,7 +172,7 @@ def _align(
             open_insertion, extend_insertion,
             open_deletion, extend_deletion,
             miscall_cost,
-            do_local, do_affine, do_codon,
+            do_local, do_affine, do_codon, globalStartingPoint, 
             <dtype_t *> codon3x5.data,
             <dtype_t *> codon3x4.data,
             <dtype_t *> codon3x2.data,
