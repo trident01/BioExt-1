@@ -124,18 +124,18 @@ setup(
             ] + _installrefdirs
         },
     scripts=[
-        'scripts/bam2fna',
-        'scripts/bam2msa',
-        'scripts/bamclip',
+        'scripts/bam2fna.py',
+        'scripts/bam2msa.py',
+        'scripts/bamclip.py',
         'scripts/bealign.py',
-        'scripts/begraph',
-        'scripts/clipedge',
-        'scripts/consensus',
-        'scripts/msa2bam',
-        'scripts/seqmerge',
-        'scripts/translate',
+        'scripts/begraph.py',
+        'scripts/clipedge.py',
+        'scripts/consensus.py',
+        'scripts/msa2bam.py',
+        'scripts/seqmerge.py',
+        'scripts/translate.py',
 	'scripts/msaConsensus.py',
-        'scripts/alignFinal'
+        'scripts/alignFinal.py'
         # 'scripts/variants'
         ],
     ext_modules=ext_modules,
