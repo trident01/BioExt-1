@@ -43,6 +43,10 @@ There is as of now no option for a full global alignment. This might be of inter
 *The empirical codon matrix:* 64x64 scoring matrix, with entires in the order of 'AAA' to 'TTT' (the link to the paper describing it in much more detail can be found in a comment where the matrix is initialized). This was originally included as a separate option in the command line, but now is the default. A different scoring matrix can be selected by using the **--score-matrix** option from the command line.
 I added this in the simplest way possible by just creating a ScoreMatrix object, not using the parsing options available in the package. As far as I know of, it has all the functionality of any ScoreMatrix in the aligner. One final note - I changed the min function to not accept a value of -50 for the min if we are using a CodonScoringMatrix, as this is the score for matching a codon to a stop codon, as is not representative of the actual minimum. 
 
+### Notes about AlignmentImage: ###
 
+Run this with **javac AlignmentImage.java** and then **java AlignmentImage testSeqs.fasta testSeqs.png**. If you do not put the names of two files when running the second command, the program will return an error. 
+
+This generates a very simple picture of an alignment, where each nucleotide is mapped to a pixel of a set color. Although it is very simple, I am including it in case it would be of use to anyone. 
 
 
