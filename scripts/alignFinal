@@ -35,6 +35,7 @@ def toreference(string):
 def main(
         input_handle,
         output_handle,
+        oneAlignment,
         reference,
         expected_identity,
         alphabet,
@@ -43,13 +44,14 @@ def main(
         discard_handle,
         do_sort,
         quiet,
+        extendGapPenalty,
         codonMatrix,
         globalStartingPoint,
         threshold,
         insertGroups,
         keepGaps
         ):
-    print(reference)
+
     retcode1 = bealign.main(
                 input_handle,
                 output_handle+"FIRST.bam",
@@ -62,13 +64,15 @@ def main(
                 do_sort,
                 quiet,
                 codonMatrix,
-                globalStartingPoint
+                globalStartingPoint,
+                extendGapPenalty
                 )
+    retcode2 = retcode3 = 0
     
+    if(not oneAlignment):
+        retcode2 = msaConsensus.main(output_handle+"FIRST.bam", output_handle+"Consensus.fasta", threshold, insertGroups, keepGaps)
 
-    retcode2 = msaConsensus.main(output_handle+"FIRST.bam", output_handle+"Consensus.fasta", threshold, insertGroups, keepGaps)
-
-    retcode3 = bealign.main(
+        retcode3 = bealign.main(
                 input_handle,
                 output_handle+"FINAL.bam",
                 toreference(output_handle+"Consensus.fasta"),
@@ -80,7 +84,8 @@ def main(
                 do_sort,
                 quiet,
                 codonMatrix,
-                globalStartingPoint
+                globalStartingPoint,
+                extendGapPenalty
                 )
 
     return retcode1+retcode2+retcode3
@@ -123,6 +128,11 @@ if __name__ == '__main__':
         type=argparse.FileType('wb'),
         help='send files to this output name (Eg. if user enters asdf, alignFinal will output asdfFIRST.bam, asdfConsensus.fasta, and asdfFINAL.bam)'
         )
+    parser.add_argument(
+        '-oa', '--oneAlignment', 
+        action = 'store_true',
+        help='Only do one alignment to chosen reference'
+        )
     add_reference(parser, '-r', '--reference')
     parser.add_argument(
         '-e', '--expected-identity',
@@ -158,6 +168,11 @@ if __name__ == '__main__':
         help='do not print status update messages'
         )
     parser.add_argument(
+        '-egp', '--extendGapPenalty',
+        action='store',
+        help='set the extend gap penalty to this percentage of the range of the scoring matrix [default=2.5]' 
+        )
+    parser.add_argument(
         '-cm', '--codonMatrix',
         action='store_true',
         help='Use an empirical codon matrix for scoring alignments. If selected, overrides any different scoring matrix selected.'
@@ -171,12 +186,12 @@ if __name__ == '__main__':
     parser.add_argument(
         '-t', '--threshold',
         action='store_true',
-        help='Use a threshold of 5 percent when considering whether to take a gap majority in making the consensus. In tests this does not keep frame, but it is included for historical reasons.'
+        help='Use a threshold of 5 percent when considering whether to take a gap majority in making the consensus. This does not keep frame, but it is included for historical reasons.'
         )
     parser.add_argument(
         '-ig', '--insertGroups', 
         action='store_true', 
-        help='Insertions in the consensus must be in groups of 3 (not working/fully implemented)'
+        help='Insertions in the consensus must be in groups of 3 (not working/fully implemented).'
         )
     parser.add_argument(
         '-kg', '--keepGaps', 
@@ -186,13 +201,17 @@ if __name__ == '__main__':
 
     args = None
     retcode = -1
+    
     try:
         args = parser.parse_args()
         output_file = args.output.name
         args.output.close()
+        if(args.extendGapPenalty == None):
+            args.extendGapPenalty = 2.5
         retcode = main(
             args.input,
             output_file,
+            args.oneAlignment,
             args.reference,
             args.expected_identity,
             args.alphabet,
@@ -201,6 +220,7 @@ if __name__ == '__main__':
             args.discard,
             args.sort,
             args.quiet,
+            args.extendGapPenalty,
             args.codonMatrix,
             args.globalStartingPoint, 
             args.threshold,

@@ -175,7 +175,7 @@ def main(bam_file, out_handle, threshold, insertGroups, keepGaps):
                         else:
                             consensus += '-'
                     elif(not threshold and i == 0):
-                        consensus += "*"
+                        consensus += "-"
                     else:
                         consensus += "-"
                 else:

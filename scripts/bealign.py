@@ -33,7 +33,8 @@ def main(
         do_sort,
         quiet,
         codonMatrix,
-        globalStartingPoint
+        globalStartingPoint, 
+	extendGapPenalty
         ):
 
     try:
@@ -90,6 +91,7 @@ def main(
             output,
             codonMatrix,
             globalStartingPoint,
+            extendGapPenalty,
             quiet
             )
         if do_sort:
@@ -192,6 +194,11 @@ if __name__ == '__main__':
         action='store_true',
         help='Sequences are penalized for not starting at the starting point of the reference (the first row and column of the scoring matrix are initialized with penalties). Sequences are not penalized for ending early, with the caveat that at least one sequence be used fully (the backtrack starts with the max score in the bottom row or rightmost column of the dynamic matrix). This option is therefore different from a global or local alignment.'
         )
+    parser.add_argument(
+        '-egp', '--extendGapPenalty',
+        action='store',
+        help='set the extend gap penalty to this percentage of the range of the scoring matrix [default=2.5]' 
+        )
 
     args = None
     retcode = -1
@@ -211,7 +218,8 @@ if __name__ == '__main__':
             args.sort,
             args.quiet,
             args.codonMatrix,
-            args.globalStartingPoint
+            args.globalStartingPoint,
+            args.extendGapPenalty
         )
     finally:
         if args is not None:

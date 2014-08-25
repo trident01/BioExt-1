@@ -82,6 +82,7 @@ class Aligner:
             score_matrix,
             codonMatrix,
             globalStartingPoint,
+            extendGapPenalty, 
             open_insertion=None,
             extend_insertion=None,
             open_deletion=None,
@@ -112,10 +113,7 @@ class Aligner:
             letters = score_matrix.letters
             score_matrix_ = score_matrix.tondarray()
 
-        # set the default extension cost to 7.5% of the range
-	# initialized by lance to 40/3
-        magic = 40 / 1 # magic denominator for 7.5%
-        ext_cost = (score_matrix.max() - score_matrix.min()) / magic
+        ext_cost = (score_matrix.max() - score_matrix.min()) * extendGapPenalty / 100
         # we take the negation of the minimum,
         # because the implementation assumes these values are penalties,
         # and subtracts them in all places

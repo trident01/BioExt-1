@@ -68,6 +68,7 @@ def _align_par(
         output,
         codonMatrix,
 	    globalStartingPoint,
+        extendGapPenalty,
         quiet=True,
         ):
 
@@ -83,6 +84,7 @@ def _align_par(
         score_matrix,
         codonMatrix,
         globalStartingPoint,
+        extendGapPenalty,
         do_codon=do_codon,
         expected_identity=expected_identity
         )
@@ -93,7 +95,7 @@ def _align_par(
         refstr = str(reference)
     elif isinstance(reference, SeqRecord):
         refstr = str(reference.seq)
-    else:
+    else:   
         raise ValueError(
             'reference must be one of str, Bio.Seq, Bio.SeqRecord'
             )
