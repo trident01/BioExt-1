@@ -204,11 +204,18 @@ class ScoreMatrix(object):
 
     def min(self):
         minValue = 1000
-        for i in self.__valid_scores:
-            # in the codon substitution matrix, substitutions involving a stop codon are given this score   
-            # which throws off the calculation of certain penalties
-            if minValue > i and not i==-50.0:
-                minValue = i
+        if(isinstance(self, DNAScoreMatrix) or isinstance(self, ProteinScoreMatrix)):
+            for i in self.__valid_scores:
+                if minValue > i:
+                    minValue = i
+        # in the codon substitution matrix, substitutions involving a stop codon are given a score of -50  
+        # which throws off the calculation of certain penalties
+        else:
+            for i in self.__valid_scores:
+                if minValue > i and not i==-50.0:
+                    minValue = i
+            
+            
         return minValue
 
 

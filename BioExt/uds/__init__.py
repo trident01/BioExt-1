@@ -66,7 +66,6 @@ def _align_par(
         expected_identity,
         discard,
         output,
-        codonMatrix,
 	    globalStartingPoint,
         extendGapPenalty,
         quiet=True,
@@ -82,7 +81,6 @@ def _align_par(
 
     aln = Aligner(
         score_matrix,
-        codonMatrix,
         globalStartingPoint,
         extendGapPenalty,
         do_codon=do_codon,

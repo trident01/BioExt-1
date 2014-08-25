@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-from __future__ import division, print_function
-
 import sys
 
 from Bio import SeqIO
@@ -19,11 +17,25 @@ from BioExt.scorematrices import (
     ProteinScoreMatrix
     )
 from BioExt.uds import _align_par
+import bealign
+import msaConsensus
+
+
+def toreference(string):
+        try:
+            with open(string) as handle:
+                ref = next(SeqIO.parse(handle, 'fasta'))
+            return ref
+        except:
+            msg = "'{0}' does not exist or is not a valid FASTA file".format(string)
+            raise ArgumentTypeError(msg)
+
 
 
 def main(
         input_handle,
         output_handle,
+        oneAlignment,
         reference,
         expected_identity,
         alphabet,
@@ -32,77 +44,51 @@ def main(
         discard_handle,
         do_sort,
         quiet,
-        globalStartingPoint, 
-	    extendGapPenalty
+        extendGapPenalty,
+        codonMatrix,
+        globalStartingPoint,
+        threshold,
+        insertGroups,
+        keepGaps
         ):
 
-    try:
-        score_matrix_ = score_matrix.load()
-    except:
-        raise RuntimeError('could not load the score matrix')
+    retcode1 = bealign.main(
+                input_handle,
+                output_handle+"FIRST.bam",
+                reference,
+                expected_identity,
+                alphabet,
+                reverse_complement,
+                score_matrix,
+                discard_handle,
+                do_sort,
+                quiet,
+                codonMatrix,
+                globalStartingPoint,
+                extendGapPenalty
+                )
+    retcode2 = retcode3 = 0
+    
+    if(not oneAlignment):
+        retcode2 = msaConsensus.main(output_handle+"FIRST.bam", output_handle+"Consensus.fasta", threshold, insertGroups, keepGaps)
 
-    if ((alphabet == 'dna' and not isinstance(score_matrix, DNAScoreMatrix)) and
-            not isinstance(score_matrix, ProteinScoreMatrix)):
-        raise ValueError(
-            'DNA alphabet requires a DNA score matrix, '
-            'while amino and codon alphabets require a protein score matrix'
-            )
+        retcode3 = bealign.main(
+                input_handle,
+                output_handle+"FINAL.bam",
+                toreference(output_handle+"Consensus.fasta"),
+                expected_identity,
+                alphabet,
+                reverse_complement,
+                score_matrix,
+                discard_handle,
+                do_sort,
+                quiet,
+                codonMatrix,
+                globalStartingPoint,
+                extendGapPenalty
+                )
 
-    do_codon = alphabet == 'codon'
-
-    records = SeqIO.parse(input_handle, 'fasta')
-
-    # grab the first, make it gapless once and for all
-    if reference is None:
-        reference = gapless(next(records))
-        def allseqs(records):
-            yield compute_cigar(reference, reference)
-            for record in records:
-                yield record
-    else:
-        def allseqs(records):
-            for record in records:
-                yield record
-
-    if discard_handle:
-        def discard(record):
-            SeqIO.write([gapless(record.upper())], discard_handle, 'fasta')
-    else:
-        discard = None
-
-    def output(records):
-        BamIO.write(
-            allseqs(records),
-            output_handle,
-            reference
-            )
-
-    retcode = -1
-    try:
-        _align_par(
-            reference,
-            records,
-            score_matrix_,
-            do_codon,
-            reverse_complement,
-            expected_identity,
-            discard,
-            output,
-            globalStartingPoint,
-            extendGapPenalty,
-            quiet
-            )
-        if do_sort:
-            BamIO.sort(output_handle)
-        retcode = 0
-    except FrequenciesError:
-        print(
-            'supplied score-matrix does not imply a frequency distribution:',
-            'please choose another matrix if you must filter on expected identity',
-            file=sys.stderr
-            )
-
-    return retcode
+    return retcode1+retcode2+retcode3
 
 
 if __name__ == '__main__':
@@ -110,8 +96,6 @@ if __name__ == '__main__':
 
     from os import remove
     from os.path import getsize
-
-    from BioExt import __version__ as version
 
     def probability(string):
         try:
@@ -125,8 +109,10 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(
         description=(
-            'align sequences to a reference using '
-            'a codon alignment algorithm and output to a BAM file'
+            'align sequences to HXB2, then '
+            'to a msaConsensus using a codon alignment algorithm. Options are those of bealign and msaCons.'
+            ' This outputs 3 files: a .bam which is aligned to the users reference choice, a consensus '
+            'based on this alignment, and a .bam aligned to this consensus'
             )
         )
 
@@ -134,13 +120,18 @@ if __name__ == '__main__':
         'input',
         metavar='INPUT',
         type=argparse.FileType('r'),
-        help='INPUT FASTA file'
+        help='INPUT FASTA file with sequences to be pairwise aligned'
         )
     parser.add_argument(
         'output',
         metavar='OUTPUT',
         type=argparse.FileType('wb'),
-        help='send BAM to OUTPUT'
+        help='send files to this output name (Eg. if user enters asdf, alignFinal will output asdfFIRST.bam, asdfConsensus.fasta, and asdfFINAL.bam)'
+        )
+    parser.add_argument(
+        '-oa', '--oneAlignment', 
+        action = 'store_true',
+        help='Only do one alignment to chosen reference'
         )
     add_reference(parser, '-r', '--reference')
     parser.add_argument(
@@ -177,32 +168,50 @@ if __name__ == '__main__':
         help='do not print status update messages'
         )
     parser.add_argument(
-        '-v', '--version',
-        action='version',
-        version='BioExt version {0}'.format(version),
-        help='print version information and exit'
+        '-egp', '--extendGapPenalty',
+        action='store',
+        help='set the extend gap penalty to this percentage of the range of the scoring matrix [default=2.5]' 
+        )
+    parser.add_argument(
+        '-cm', '--codonMatrix',
+        action='store_true',
+        help='Use an empirical codon matrix for scoring alignments. If selected, overrides any different scoring matrix selected.'
         )
     parser.add_argument(
         '-gsp', '--globalStartingPoint', 
         action='store_true',
         help='Sequences are penalized for not starting at the starting point of the reference (the first row and column of the scoring matrix are initialized with penalties). Sequences are not penalized for ending early, with the caveat that at least one sequence be used fully (the backtrack starts with the max score in the bottom row or rightmost column of the dynamic matrix). This option is therefore different from a global or local alignment.'
         )
+
     parser.add_argument(
-        '-egp', '--extendGapPenalty',
-        action='store',
-        default=2.5,
-        help='set the extend gap penalty to this percentage of the range of the scoring matrix [default=2.5]' 
+        '-t', '--threshold',
+        action='store_true',
+        help='Use a threshold of 5 percent when considering whether to take a gap majority in making the consensus. This does not keep frame, but it is included for historical reasons.'
+        )
+    parser.add_argument(
+        '-ig', '--insertGroups', 
+        action='store_true', 
+        help='Insertions in the consensus must be in groups of 3 (not working/fully implemented).'
+        )
+    parser.add_argument(
+        '-kg', '--keepGaps', 
+        action='store_true',
+        help='Print consensus with gaps. (Default is to gap-strip).'
         )
 
     args = None
     retcode = -1
+    
     try:
         args = parser.parse_args()
         output_file = args.output.name
         args.output.close()
+        if(args.extendGapPenalty == None):
+            args.extendGapPenalty = 2.5
         retcode = main(
             args.input,
             output_file,
+            args.oneAlignment,
             args.reference,
             args.expected_identity,
             args.alphabet,
@@ -211,8 +220,12 @@ if __name__ == '__main__':
             args.discard,
             args.sort,
             args.quiet,
-            args.globalStartingPoint,
-            args.extendGapPenalty
+            args.extendGapPenalty,
+            args.codonMatrix,
+            args.globalStartingPoint, 
+            args.threshold,
+            args.insertGroups,
+            args.keepGaps,
         )
     finally:
         if args is not None:

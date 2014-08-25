@@ -14,6 +14,7 @@ from Bio.SeqRecord import SeqRecord
 from BioExt.align._align import _align, _compute_codon_matrices
 from BioExt.misc import gapless
 from BioExt.scorematrices import ProteinScoreMatrix as _ProteinScoreMatrix
+from BioExt.scorematrices import DNAScoreMatrix as _DNAScoreMatrix
 from BioExt.scorematrices.CodonMatrix import getEmpiricalCodonMatrix, getCodonMatrixAsArray
 
 __all__ = ['Aligner']
@@ -80,7 +81,6 @@ class Aligner:
     def __init__(
             self,
             score_matrix,
-            codonMatrix,
             globalStartingPoint,
             extendGapPenalty, 
             open_insertion=None,
@@ -95,23 +95,34 @@ class Aligner:
             ):
         if(globalStartingPoint):
             print("Using a Global Starting Point")
-        if do_codon and not isinstance(score_matrix, _ProteinScoreMatrix):
-            raise ValueError('codon alignment requires a protein score matrix')
 
-        if codonMatrix and do_codon:
+        # I am removing this block of code because the default case will be that we want to use a codonMatrix
+
+        #if do_codon and not isinstance(score_matrix, _ProteinScoreMatrix):
+            #raise ValueError('codon alignment requires a protein score matrix')
+
+        if do_codon and isinstance(score_matrix, _DNAScoreMatrix):
+            raise ValueError('codon alignment cannot use DNA Score Matrix')
+
+        elif do_codon and isinstance(score_matrix, _ProteinScoreMatrix):
+            print("not doing codon Matrix")
+            letters, score_matrix_ = _protein_to_codon(score_matrix, 0.5)
+
+        elif do_codon:
             print("doing a Codon Matrix!")
             letters = 'ACGT'
+            
             score_matrix = getEmpiricalCodonMatrix()
             score_matrix_ = getCodonMatrixAsArray()
             print(score_matrix_)
             print()
-        elif do_codon:
-            print("not doing codon Matrix")
-            letters, score_matrix_ = _protein_to_codon(score_matrix, 0.5)
+
         else:
             print("not doing codon matrix")
             letters = score_matrix.letters
             score_matrix_ = score_matrix.tondarray()
+
+        print("Extend Gap Penalty will be " + str(extendGapPenalty)+"% of the range of the scoring matrix")
 
         ext_cost = (score_matrix.max() - score_matrix.min()) * extendGapPenalty / 100
         # we take the negation of the minimum,

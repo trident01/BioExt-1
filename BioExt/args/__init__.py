@@ -1,5 +1,6 @@
 
 from __future__ import division, print_function
+from BioExt.scorematrices.CodonMatrix import getEmpiricalCodonMatrix
 
 
 __all__ = [
@@ -86,8 +87,8 @@ def add_scorematrix(parser, *args):
         metavar='SCOREMATRIX',
         type=lambda s: score_matrices.get(s, s),
         choices=sorted(score_matrices.values(), key=str),
-        default=score_matrices['BLOSUM62'],
-        help='parameterize using one of {{{0}}} [default=BLOSUM62]'.format(
+        default=getEmpiricalCodonMatrix(),
+        help='parameterize using one of {{{0}}} [default=Empirical Codon Matrix]'.format(
             ', '.join(score_matrices.keys())
             )
         )
