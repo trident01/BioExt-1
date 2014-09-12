@@ -225,7 +225,7 @@ if __name__ == '__main__':
             args.globalStartingPoint, 
             args.threshold,
             args.insertGroups,
-            args.keepGaps,
+            args.keepGaps
         )
     finally:
         if args is not None:
