@@ -117,8 +117,6 @@ def main(bam_file, out_handle, threshold, insertGroups, keepGaps):
         
         for i in range(len(alignedStrings)):
             for j in range(len(alignedStrings[i])):
-                if(j==0):
-                    print(alignedStrings[i][j])
                 alignedStrings[i][j] += '-' * (maxLength[j]-len(alignedStrings[i][j]))
                 if(insertGroups):
                     while(len(alignedStrings[i][j]) % 3 != 1):
@@ -180,10 +178,6 @@ def main(bam_file, out_handle, threshold, insertGroups, keepGaps):
                         consensus += "-"
                 else:
                     consensus += 'N'
-                    print('N added' + str(a_count) +" "+str(c_count)+" "+str(g_count)+" "+str(t_count)+" "+str(n_count))
-        for x in range(14):
-            print(len(alignedStrings[0][x]))
-        print(consensus[0:100])
 
         if(keepGaps):
             SeqIO.write( SeqRecord(Seq(consensus),
